@@ -84,17 +84,30 @@ _out:
 }
 
 static BOOL AFServerTrustIsValid(SecTrustRef serverTrust) {
-    BOOL isValid = NO;
-    SecTrustResultType result;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    __Require_noErr_Quiet(SecTrustEvaluate(serverTrust, &result), _out);
-#pragma clang diagnostic pop
+    if (serverTrust == NULL) {
+        return NO;
+    }
+    
+     if (@available(iOS 12.0, *)) {
+         CFErrorRef error;
+         if (SecTrustEvaluateWithError(serverTrust, &error)) {
+             return YES;
+         } else {
+             return NO;
+         }
+     }  else {
+         BOOL isValid = NO;
+         SecTrustResultType result;
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+     __Require_noErr_Quiet(SecTrustEvaluate(serverTrust, &result), _out);
+ #pragma clang diagnostic pop
 
-    isValid = (result == kSecTrustResultUnspecified || result == kSecTrustResultProceed);
+     isValid = (result == kSecTrustResultUnspecified || result == kSecTrustResultProceed);
 
-_out:
-    return isValid;
+ _out:
+     return isValid;
+     }
 }
 
 static NSArray * AFCertificateTrustChainForServerTrust(SecTrustRef serverTrust) {
@@ -220,6 +233,7 @@ static NSArray * AFPublicKeyTrustChainForServerTrust(SecTrustRef serverTrust) {
 - (BOOL)evaluateServerTrust:(SecTrustRef)serverTrust
                   forDomain:(NSString *)domain
 {
+    NSLog(@"servertrust = %@ domain = %@",serverTrust, domain);
     if (domain && self.allowInvalidCertificates && self.validatesDomainName && (self.SSLPinningMode == AFSSLPinningModeNone || [self.pinnedCertificates count] == 0)) {
         // https://developer.apple.com/library/mac/documentation/NetworkingInternet/Conceptual/NetworkingTopics/Articles/OverridingSSLChainValidationCorrectly.html
         //  According to the docs, you should only trust your provided certs for evaluation.
